@@ -26,6 +26,8 @@
 
 #define Ld 1.868  //轴距
 
+#define car_vel 0.3
+
 using namespace std;
 
 ros::Publisher purepersuit_;
@@ -122,6 +124,7 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
     float dis =
         sqrt(pow(r_y_[index] - r_y_[i], 2) + pow(r_x_[index] - r_x_[i], 2));
     //判断跟预瞄点的距离
+    preview_dis = k * car_vel + PREVIEW_DIS;
     if (dis < preview_dis) {
       temp_index = i;
     } else {
@@ -169,11 +172,12 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   path_pub_.publish(path);
 }
 
-void velocityCall(const carla_msgs::CarlaEgoVehicleStatus& carWaypoint) {
-  // carVelocity = carWaypoint.linear.x;
-  carVelocity = carWaypoint.velocity;
-  preview_dis = k * carVelocity + PREVIEW_DIS;
-}
+// void velocityCall(const carla_msgs::CarlaEgoVehicleStatus& carWaypoint) {
+//   // carVelocity = carWaypoint.linear.x;
+//   carVelocity = carWaypoint.velocity;
+
+//   preview_dis = k * carVelocity + PREVIEW_DIS;
+// }
 
 void pointCallback(const nav_msgs::Path &msg) {
   // geometry_msgs/PoseStamped[] poses
@@ -193,7 +197,7 @@ int main(int argc, char **argv) {
   //创建节点句柄
   ros::NodeHandle n;
   //创建Publisher，发送经过pure_pursuit计算后的转角及速度
-  purepersuit_ = n.advertise<geometry_msgs::Twist>("/smart/cmd_vel", 20);
+  purepersuit_ = n.advertise<geometry_msgs::Twist>("/cmd_vel", 20);
 
   path_pub_ = n.advertise<nav_msgs::Path>("rvizpath", 100, true);
   // ros::Rate loop_rate(10);
@@ -207,8 +211,8 @@ int main(int argc, char **argv) {
   pose.header.frame_id = "map";
 
   ros::Subscriber splinePath = n.subscribe("/splinepoints", 20, pointCallback);
-  ros::Subscriber carVel = n.subscribe("/carla/hero/vehicle_status", 20, velocityCall);
-  ros::Subscriber carPose = n.subscribe("/carla/hero/odometry", 20, poseCallback);
+  // ros::Subscriber carVel = n.subscribe("/fixposition/speed", 20, velocityCall);
+  ros::Subscriber carPose = n.subscribe("/fixposition/odometry", 20, poseCallback);
   ros::spin();
   return 0;
 }
