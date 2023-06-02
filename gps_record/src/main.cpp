@@ -51,9 +51,11 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "record");
     ros::NodeHandle nh;
+    nh.param<std::string>("position_saver_node/file_path", file_path_, "/home/user/position.txt");
+
     
 
-    ros::Subscriber position_sub = nh.subscribe("/carla/hero/odometry", 1, callbackPosition);
+    ros::Subscriber position_sub = nh.subscribe("/fixposition/odometry", 1, callbackPosition);
     fp = fopen((file_path_+file_name_).c_str(),"w");
     ros::Rate loop_rate(1);
     
