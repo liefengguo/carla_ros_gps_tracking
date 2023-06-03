@@ -36,5 +36,8 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+add_executable(gps_record src/gps_record.cpp)
+target_link_libraries(gps_record ${catkin_LIBRARIES})
+
 add_executable(record src/main.cpp)
 target_link_libraries(record ${catkin_LIBRARIES})
