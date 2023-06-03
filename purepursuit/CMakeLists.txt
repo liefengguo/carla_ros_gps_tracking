@@ -209,3 +209,7 @@ include_directories( include ${catkin_INCLUDE_DIRS})
 
 add_executable(purepursuit_ src/purepursuit.cpp)
 target_link_libraries(purepursuit_ ${catkin_LIBRARIES})
+
+
+add_executable(purepursuit_txt src/purepursuit_txt.cpp)
+target_link_libraries(purepursuit_txt ${catkin_LIBRARIES})
