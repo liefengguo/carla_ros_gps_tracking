@@ -13,6 +13,8 @@
 #include <tf/transform_broadcaster.h>
 #include "geometry_msgs/PoseStamped.h"
 
+#include "../include/loc_ang.h"
+#include "../include/gnss_coordinate_convert.h"
 
 #include <carla_msgs/CarlaEgoVehicleControl.h>
 #include <carla_msgs/CarlaEgoVehicleStatus.h>
@@ -22,7 +24,7 @@
 
 
 
-#define PREVIEW_DIS 20 //预瞄距离
+#define PREVIEW_DIS 2 //预瞄距离
 
 #define Ld 1.868  //轴距
 
@@ -64,9 +66,12 @@ vector<float> bestPoints_ = {0.0};
 
 //计算发送给模型车的转角
 void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
-  auto currentPositionX = currentWaypoint.pose.pose.position.x;
-  auto currentPositionY = currentWaypoint.pose.pose.position.y;
+  double x ,y;
+  GaussProjCal(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,&x,&y);
+  auto currentPositionX = x;
+  auto currentPositionY = y;
   auto currentPositionZ = 0.0;
+  cout<<" x: "<<x<<"y : "<<y<<endl;
 
   auto currentQuaternionX = currentWaypoint.pose.pose.orientation.x;
   auto currentQuaternionY = currentWaypoint.pose.pose.orientation.y;
@@ -141,9 +146,12 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   // 当前点和目标点的距离Id
   float dl = sqrt(pow(r_y_[index] - currentPositionY, 2) +
                   pow(r_x_[index] - currentPositionX, 2));
+  
   // 发布小车运动指令及运动轨迹
   if (dl > 0.5) {
-    float theta = atan(2 * Ld * sin(alpha) / dl);
+    // float theta = atan(2 * Ld * sin(alpha) / dl);
+    float theta = alpha * 0.5 / 38.6;
+    cout<<"发布："<<alpha<<endl;
     geometry_msgs::Twist vel_msg;
     vel_msg.linear.x = 0.3;
     vel_msg.angular.z = theta;

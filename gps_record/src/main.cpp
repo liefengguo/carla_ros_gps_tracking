@@ -12,7 +12,7 @@
 #include <tf/transform_broadcaster.h>
 #include <cmath>
 #include <unistd.h>
-
+#include "../include/gnss_coordinate_convert.h"
 using namespace std;
 FILE *fp;
 string file_path_ = "/home/chen/ros_work/lidar/src/control_publisher/";
@@ -25,6 +25,8 @@ void callbackPosition(const nav_msgs::Odometry& msgs)
     double position_y = msgs.pose.pose.position.y;
     double position_z = msgs.pose.pose.position.z;
     double yaw = tf::getYaw(msgs.pose.pose.orientation);
+    double x ,y;
+    GaussProjCal(position_x,position_y,&x,&y);
     
     
 
@@ -34,7 +36,7 @@ void callbackPosition(const nav_msgs::Odometry& msgs)
     }
     if(fp != NULL)
     {
-        fprintf(fp,"%f %f %f %f \n",position_x,position_y,position_z,yaw);
+        fprintf(fp,"%f %f %f %f \n",x,y,position_z,yaw);
         fflush(fp);
         
     }
@@ -51,7 +53,7 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "record");
     ros::NodeHandle nh;
-    nh.param<std::string>("position_saver_node/file_path", file_path_, "/home/user/position.txt");
+    nh.param<std::string>("record/file_path", file_path_, "/home/user/position.txt");
 
     
 

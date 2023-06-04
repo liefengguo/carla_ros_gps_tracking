@@ -15,7 +15,7 @@
 using namespace std;
 FILE *fp;
 string file_path_ = "/home/chen/ros_work/lidar/src/control_publisher/";
-string file_name_ = "gps_points.txt";
+string file_name_ = "path.txt";
 
 
 void callbackPosition(const nav_msgs::Odometry& msgs)
@@ -54,7 +54,7 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "record");
     ros::NodeHandle nh;
-    nh.param<std::string>("position_saver_node/file_path", file_path_, "/home/user/position.txt");
+    nh.param<std::string>("gps_record/file_path", file_path_, "/home/user/position.txt");
 
     
 

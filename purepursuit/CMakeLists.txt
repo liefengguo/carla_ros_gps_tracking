@@ -213,7 +213,7 @@ include_directories( include ${catkin_INCLUDE_DIRS})
 # catkin_add_nosetests(test)
 find_package(orocos_kdl REQUIRED)
 
-add_executable(purepursuit_ src/purepursuit.cpp)
+add_executable(purepursuit_ src/purepursuit.cpp src/gnss_coordinate_convert.cpp)
 target_link_libraries(purepursuit_ ${catkin_LIBRARIES})
 
 
