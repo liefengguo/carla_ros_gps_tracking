@@ -71,7 +71,7 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   auto currentPositionX = x;
   auto currentPositionY = y;
   auto currentPositionZ = 0.0;
-  cout<<" x: "<<x<<"y : "<<y<<endl;
+  // cout<<" x: "<<x<<"y : "<<y<<endl;
 
   auto currentQuaternionX = currentWaypoint.pose.pose.orientation.x;
   auto currentQuaternionY = currentWaypoint.pose.pose.orientation.y;
@@ -151,7 +151,7 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   if (dl > 0.5) {
     // float theta = atan(2 * Ld * sin(alpha) / dl);
     float theta = alpha * 0.5 / 38.6;
-    cout<<"发布："<<alpha<<endl;
+    cout<<"alpha: "<<alpha<<" dis: "<<dl<<endl;
     geometry_msgs::Twist vel_msg;
     vel_msg.linear.x = 0.3;
     vel_msg.angular.z = theta;
@@ -172,6 +172,7 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
     this_pose_stamped.header.frame_id = "map";
     path.poses.push_back(this_pose_stamped);
   } else {
+    cout<<"NO: "<<dl<<endl;
     geometry_msgs::Twist vel_msg;
     vel_msg.linear.x = 0;
     vel_msg.angular.z = 0;
