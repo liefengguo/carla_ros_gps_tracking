@@ -1,5 +1,5 @@
 <launch>
-    <node pkg="purepursuit" type="purepursuit_txt" name="purepursuit_node" output="screen"/>
+    <node pkg="purepursuit" type="pure_pursuit" name="pure_pursuit" output="screen"/>
     <param name="gps_points" value="$(find gps_record)/output/gps_points.txt" />
 
 </launch>

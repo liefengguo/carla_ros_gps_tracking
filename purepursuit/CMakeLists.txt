@@ -12,7 +12,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  geometry_msgs
   sensor_msgs
+  ackermann_msgs
   tf
   tf2
 )
@@ -106,13 +108,17 @@ find_package(catkin REQUIRED COMPONENTS
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES purepursuit
-#  CATKIN_DEPENDS nav_msgs roscpp rospy std_msgs
-#  DEPENDS system_lib
-)
+# catkin_package(
+# #  INCLUDE_DIRS include
+# #  LIBRARIES purepursuit
+# #  CATKIN_DEPENDS nav_msgs roscpp rospy std_msgs
+# #  DEPENDS system_lib
+# nav_msgs ackermann_msgs
+# )
 
+catkin_package(
+  CATKIN_DEPENDS roscpp std_msgs geometry_msgs nav_msgs ackermann_msgs tf2  rospy
+  )
 ###########
 ## Build ##
 ###########
@@ -205,10 +211,11 @@ include_directories( include ${catkin_INCLUDE_DIRS})
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+find_package(orocos_kdl REQUIRED)
 
 add_executable(purepursuit_ src/purepursuit.cpp)
 target_link_libraries(purepursuit_ ${catkin_LIBRARIES})
 
 
-add_executable(purepursuit_txt src/purepursuit_txt.cpp)
-target_link_libraries(purepursuit_txt ${catkin_LIBRARIES})
+add_executable(pure_pursuit src/pure_pursuit.cpp)
+target_link_libraries(pure_pursuit ${catkin_LIBRARIES} ${orocos_kdl_LIBRARIES})
