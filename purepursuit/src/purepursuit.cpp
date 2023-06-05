@@ -66,10 +66,10 @@ vector<float> bestPoints_ = {0.0};
 
 //计算发送给模型车的转角
 void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
-  // double x ,y;
-  // GaussProjCal(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,&x,&y);
-  auto currentPositionX = currentWaypoint.pose.pose.position.x;
-  auto currentPositionY = currentWaypoint.pose.pose.position.y;
+  double x ,y;
+  GaussProjCal(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,&x,&y);
+  auto currentPositionX = x;
+  auto currentPositionY = y;
   auto currentPositionZ = 0.0;
   // cout<<" x: "<<x<<"y : "<<y<<endl;
 

@@ -151,3 +151,54 @@ void GaussProjInvCal(double X, double Y, double *longitude, double *latitude)
     *longitude = longitude1 / iPI;
     *latitude = latitude1 / iPI;
 }
+
+void ecefToEnu(double x, double y, double z, double *out_x, double *out_y, double *out_z) {
+    double a = 6378137;
+    double b = 6356752.3142;
+    double f = (a - b) / a;
+    double e_sq = f * (2 - f);
+    double lamb = AIM_LAT * M_PI / 180.0;
+    double phi = AIM_LNG * M_PI / 180.0;
+    double s = std::sin(lamb);
+    double N = a / std::sqrt(1 - e_sq * s * s);
+    double sin_lambda = std::sin(lamb);
+    double cos_lambda = std::cos(lamb);
+    double sin_phi = std::sin(phi);
+    double cos_phi = std::cos(phi);
+
+    double x0 = (AIM_HEIGHT + N) * cos_lambda * cos_phi;
+    double y0 = (AIM_HEIGHT + N) * cos_lambda * sin_phi;
+    double z0 = (AIM_HEIGHT + (1 - e_sq) * N) * sin_lambda;
+
+    double xd = x - x0;
+    double yd = y - y0;
+    double zd = z - z0;
+
+    double t = -cos_phi * xd - sin_phi * yd;
+
+    double xEast = -sin_phi * xd + cos_phi * yd;
+    double yNorth = t * sin_lambda + cos_lambda * zd;
+    double zUp = cos_lambda * cos_phi * xd + cos_lambda * sin_phi * yd + sin_lambda * zd;
+
+    *out_x = xEast;
+    *out_y = yNorth;
+    *out_z = zUp;
+}
+
+// int main() {
+//     double x = 1234.56;
+//     double y = 789.01;
+//     double z = 234.56;
+//     double lat = 37.7749;
+//     double lng = -122.4194;
+//     double height = 100.0;
+
+//     double* enu = ecefToEnu(x, y, z, lat, lng, height);
+
+//     std::cout << "xEast: " << enu[0] << std::endl;
+//     std::cout << "yNorth: " << enu[1] << std::endl;
+//     std::cout << "zUp: " << enu[2] << std::endl;
+
+//     delete[] enu;
+//     return 0;
+// }
