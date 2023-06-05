@@ -24,7 +24,7 @@
 
 
 
-#define PREVIEW_DIS 2 //预瞄距离
+#define PREVIEW_DIS 10 //预瞄距离
 
 #define Ld 1.868  //轴距
 
@@ -60,17 +60,18 @@ vector<double> r_y_;
 int pointNum = 0;  //保存路径点的个数
 int targetIndex = pointNum - 1;
 /*方案一*/
-// vector<int> bestPoints_ = {pointNum - 1};
+vector<int> bestPoints_ = {pointNum - 1};
 /*方案二*/
-vector<float> bestPoints_ = {0.0};
+// vector<float> bestPoints_ = {0.0};
 
 //计算发送给模型车的转角
 void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
-  double x ,y;
-  GaussProjCal(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,&x,&y);
+  double x ,y,z;
+  // GaussProjCal(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,&x,&y);
+  ecefToEnu(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,currentWaypoint.pose.pose.position.z,&x,&y,&z);
   auto currentPositionX = x;
   auto currentPositionY = y;
-  auto currentPositionZ = 0.0;
+  auto currentPositionZ = z;
   // cout<<" x: "<<x<<"y : "<<y<<endl;
 
   auto currentQuaternionX = currentWaypoint.pose.pose.orientation.x;
@@ -78,9 +79,9 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   auto currentQuaternionZ = currentWaypoint.pose.pose.orientation.z;
   auto currentQuaternionW = currentWaypoint.pose.pose.orientation.w;
   auto currentPositionYaw = tf::getYaw(currentWaypoint.pose.pose.orientation);
-  //std::array<float, 3> calRPY = calQuaternionToEuler(currentQuaternionX, currentQuaternionY,currentQuaternionZ, currentQuaternionW);
+  std::array<float, 3> calRPY = calQuaternionToEuler(currentQuaternionX, currentQuaternionY,currentQuaternionZ, currentQuaternionW);
 
-  /*************************************************************************************************
+  /*************************************************************************************************/
   //  方案一：通过累加路径距离，和预瞄距离进行比较以及夹角方向
   // 寻找匹配目标点
   for (int i = 0; i < pointNum; i++) {
@@ -102,41 +103,41 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   }
   // 取容器中的最大值
   int index = *max_element(bestPoints_.begin(), bestPoints_.end());
-  ***************************************************************************************************/
+  /***************************************************************************************************/
 
   /**************************************************************************************************/
   // 方案二:通过计算当前坐标和目标轨迹距离，找到一个最小距离的索引号
-  int index;
-  vector<double> bestPoints_;
-  for (int i = 0; i < pointNum; i++) {
-    // float lad = 0.0;
-    double path_x = r_x_[i];
-    double path_y = r_y_[i];
-    // 遍历所有路径点和当前位置的距离，保存到数组中
-    double lad = sqrt(pow(path_x - currentPositionX, 2) +
-                     pow(path_y - currentPositionY, 2));
+  // int index;
+  // vector<double> bestPoints_;
+  // for (int i = 0; i < pointNum; i++) {
+  //   // float lad = 0.0;
+  //   double path_x = r_x_[i];
+  //   double path_y = r_y_[i];
+  //   // 遍历所有路径点和当前位置的距离，保存到数组中
+  //   double lad = sqrt(pow(path_x - currentPositionX, 2) +
+  //                    pow(path_y - currentPositionY, 2));
 
-    bestPoints_.push_back(lad);
-  }
-  // 找到数组中最小横向距离
-  auto smallest = min_element(bestPoints_.begin(), bestPoints_.end());
-  // 找到最小横向距离的索引位置
-  index = distance(bestPoints_.begin(), smallest);
+  //   bestPoints_.push_back(lad);
+  // }
+  // // 找到数组中最小横向距离
+  // auto smallest = min_element(bestPoints_.begin(), bestPoints_.end());
+  // // 找到最小横向距离的索引位置
+  // index = distance(bestPoints_.begin(), smallest);
 
-  int temp_index;
-  for (int i = index; i < pointNum; i++) {
-    //遍历路径点和预瞄点的距离，从最小横向位置的索引开始
-    float dis =
-        sqrt(pow(r_y_[index] - r_y_[i], 2) + pow(r_x_[index] - r_x_[i], 2));
-    //判断跟预瞄点的距离
-    preview_dis = k * car_vel + PREVIEW_DIS;
-    if (dis < preview_dis) {
-      temp_index = i;
-    } else {
-      break;
-    }
-  }
-  index = temp_index;
+  // int temp_index;
+  // for (int i = index; i < pointNum; i++) {
+  //   //遍历路径点和预瞄点的距离，从最小横向位置的索引开始
+  //   float dis =
+  //       sqrt(pow(r_y_[index] - r_y_[i], 2) + pow(r_x_[index] - r_x_[i], 2));
+  //   //判断跟预瞄点的距离
+  //   preview_dis = k * car_vel + PREVIEW_DIS;
+  //   if (dis < preview_dis) {
+  //     temp_index = i;
+  //   } else {
+  //     break;
+  //   }
+  // }
+  // index = temp_index;
   /**************************************************************************************************/
 
   float alpha =
