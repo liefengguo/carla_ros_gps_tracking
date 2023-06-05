@@ -26,7 +26,7 @@ void callbackPosition(const nav_msgs::Odometry& msgs)
     double position_z = msgs.pose.pose.position.z;
     double yaw = tf::getYaw(msgs.pose.pose.orientation);
     double x ,y;
-    GaussProjCal(position_x,position_y,&x,&y);
+    // GaussProjCal(position_x,position_y,&x,&y);
     
     
 
@@ -36,7 +36,7 @@ void callbackPosition(const nav_msgs::Odometry& msgs)
     }
     if(fp != NULL)
     {
-        fprintf(fp,"%f %f %f %f \n",x,y,position_z,yaw);
+        fprintf(fp,"%f %f %f %f \n",position_x,position_y,position_z,yaw);
         fflush(fp);
         
     }
