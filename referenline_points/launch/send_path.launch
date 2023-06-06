@@ -1,0 +1,12 @@
+<launch>
+  <!-- <arg name="file_path" default="$(find position_saver_node)/output/position.txt" /> -->
+  <!-- <arg name="topic_name" default="/djiros/rtk_position" /> -->
+  <!-- <arg name="topic_name" default="/fixposition/navsatfix" /> -->
+
+  <node pkg="referenceline_points" type="send_path" name="send_path" output="screen">
+    <param name="gps_points" value="$(find gps_record)/output/gps_points.txt" />
+    <!-- <param name="topic_name" value="/fixposition/navsatfix" /> -->
+    <param name="topic_name" value="/djiros/rtk_position" />
+    <param name="save_interval" value="1.0" />
+  </node>
+</launch>
