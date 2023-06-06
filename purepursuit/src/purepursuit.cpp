@@ -15,18 +15,17 @@
 
 #include "../include/loc_ang.h"
 #include "../include/gnss_coordinate_convert.h"
+#include "visualization_msgs/Marker.h"
 
-#include <carla_msgs/CarlaEgoVehicleControl.h>
-#include <carla_msgs/CarlaEgoVehicleStatus.h>
 #include <tf2/convert.h>
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Header.h>
 
 
 
-#define PREVIEW_DIS 10 //预瞄距离
+#define PREVIEW_DIS 2 //预瞄距离
 
-#define Ld 1.868  //轴距
+#define Ld 1.5  //轴距
 
 #define car_vel 0.3
 
@@ -35,6 +34,7 @@ using namespace std;
 ros::Publisher purepersuit_;
 ros::Publisher path_pub_;
 nav_msgs::Path path;
+ros::Publisher marker_pub;
 
 double carVelocity = 0;
 double preview_dis = 0;
@@ -60,9 +60,9 @@ vector<double> r_y_;
 int pointNum = 0;  //保存路径点的个数
 int targetIndex = pointNum - 1;
 /*方案一*/
-vector<int> bestPoints_ = {pointNum - 1};
+// vector<int> bestPoints_ = {pointNum - 1};
 /*方案二*/
-// vector<float> bestPoints_ = {0.0};
+vector<float> bestPoints_ = {0.0};
 
 //计算发送给模型车的转角
 void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
@@ -81,7 +81,7 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   auto currentPositionYaw = tf::getYaw(currentWaypoint.pose.pose.orientation);
   std::array<float, 3> calRPY = calQuaternionToEuler(currentQuaternionX, currentQuaternionY,currentQuaternionZ, currentQuaternionW);
 
-  /*************************************************************************************************/
+  /*************************************************************************************************
   //  方案一：通过累加路径距离，和预瞄距离进行比较以及夹角方向
   // 寻找匹配目标点
   for (int i = 0; i < pointNum; i++) {
@@ -103,46 +103,47 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   }
   // 取容器中的最大值
   int index = *max_element(bestPoints_.begin(), bestPoints_.end());
-  /***************************************************************************************************/
+  ***************************************************************************************************/
 
   /**************************************************************************************************/
   // 方案二:通过计算当前坐标和目标轨迹距离，找到一个最小距离的索引号
-  // int index;
-  // vector<double> bestPoints_;
-  // for (int i = 0; i < pointNum; i++) {
-  //   // float lad = 0.0;
-  //   double path_x = r_x_[i];
-  //   double path_y = r_y_[i];
-  //   // 遍历所有路径点和当前位置的距离，保存到数组中
-  //   double lad = sqrt(pow(path_x - currentPositionX, 2) +
-  //                    pow(path_y - currentPositionY, 2));
+  int index;
+  vector<double> bestPoints_;
+  for (int i = 0; i < pointNum; i++) {
+    // float lad = 0.0;
+    double path_x = r_x_[i];
+    double path_y = r_y_[i];
+    // 遍历所有路径点和当前位置的距离，保存到数组中
+    double lad = sqrt(pow(path_x - currentPositionX, 2) +
+                     pow(path_y - currentPositionY, 2));
 
-  //   bestPoints_.push_back(lad);
-  // }
-  // // 找到数组中最小横向距离
-  // auto smallest = min_element(bestPoints_.begin(), bestPoints_.end());
-  // // 找到最小横向距离的索引位置
-  // index = distance(bestPoints_.begin(), smallest);
+    bestPoints_.push_back(lad);
+  }
+  // 找到数组中最小横向距离
+  auto smallest = min_element(bestPoints_.begin(), bestPoints_.end());
+  // 找到最小横向距离的索引位置
+  index = distance(bestPoints_.begin(), smallest);
 
-  // int temp_index;
-  // for (int i = index; i < pointNum; i++) {
-  //   //遍历路径点和预瞄点的距离，从最小横向位置的索引开始
-  //   float dis =
-  //       sqrt(pow(r_y_[index] - r_y_[i], 2) + pow(r_x_[index] - r_x_[i], 2));
-  //   //判断跟预瞄点的距离
-  //   preview_dis = k * car_vel + PREVIEW_DIS;
-  //   if (dis < preview_dis) {
-  //     temp_index = i;
-  //   } else {
-  //     break;
-  //   }
-  // }
-  // index = temp_index;
+  int temp_index;
+  for (int i = index; i < pointNum; i++) {
+    //遍历路径点和预瞄点的距离，从最小横向位置的索引开始
+    float dis =
+        sqrt(pow(r_y_[index] - r_y_[i], 2) + pow(r_x_[index] - r_x_[i], 2));
+    //判断跟预瞄点的距离
+    preview_dis = k * car_vel + PREVIEW_DIS;
+    if (dis < preview_dis) {
+      temp_index = i;
+    } else {
+      break;
+    }
+  }
+  index = temp_index;
   /**************************************************************************************************/
 
   float alpha =
       atan2(r_y_[index] - currentPositionY, r_x_[index] - currentPositionX) -
       currentPositionYaw;
+  alpha = (alpha > M_PI) ? (alpha - 2 * M_PI) : (alpha < -M_PI) ? (alpha + 2 * M_PI) : alpha;
 
   // 当前点和目标点的距离Id
   float dl = sqrt(pow(r_y_[index] - currentPositionY, 2) +
@@ -150,12 +151,13 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   
   // 发布小车运动指令及运动轨迹
   if (dl > 0.5) {
-    // float theta = atan(2 * Ld * sin(alpha) / dl);
-    float theta = alpha * 0.5 / 38.6;
-    cout<<"alpha: "<<alpha<<" dis: "<<dl<<endl;
+    float theta = atan(2 * Ld * sin(alpha) / dl);
+    // delta = max(min(delta_max, delta), -delta_max);
+    float theta_send = theta * 0.5 / 38.6;
+    cout<<"alpha: "<<theta<<" dis: "<<dl<<"index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
     geometry_msgs::Twist vel_msg;
     vel_msg.linear.x = 0.3;
-    vel_msg.angular.z = theta;
+    vel_msg.angular.z = theta_send;
     purepersuit_.publish(vel_msg);
     // 发布小车运动轨迹
     geometry_msgs::PoseStamped this_pose_stamped;
@@ -172,6 +174,33 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
 
     this_pose_stamped.header.frame_id = "map";
     path.poses.push_back(this_pose_stamped);
+
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "map";
+    marker.header.stamp = ros::Time::now();
+    marker.ns = "coordinates";
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::SPHERE;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = r_x_[index];
+    marker.pose.position.y = r_y_[index];
+    marker.pose.position.z = 0.0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 1.0;
+    marker.scale.y = 1.0;
+    marker.scale.z = 1.0;
+    marker.color.a = 1.0;
+    marker.color.r = 0.4;
+    marker.color.g = 0.7;
+    marker.color.b = 1.0;
+    // std::ostringstream oss;
+    // oss << "x: " << r_x_[index] << ", y: " << r_y_[index] << ", z: " << 0;
+    // marker.text = oss.str();
+  marker_pub.publish(marker);
+
   } else {
     cout<<"NO: "<<dl<<endl;
     geometry_msgs::Twist vel_msg;
@@ -208,6 +237,7 @@ int main(int argc, char **argv) {
   ros::NodeHandle n;
   //创建Publisher，发送经过pure_pursuit计算后的转角及速度
   purepersuit_ = n.advertise<geometry_msgs::Twist>("/cmd_vel", 20);
+  marker_pub = n.advertise<visualization_msgs::Marker>("coordinate_marker", 10);
 
   path_pub_ = n.advertise<nav_msgs::Path>("rvizpath", 100, true);
   // ros::Rate loop_rate(10);
