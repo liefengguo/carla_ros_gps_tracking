@@ -10,6 +10,7 @@ Panels:
         - /Path1
         - /Path2
         - /Marker2
+        - /Marker3
       Splitter Ratio: 0.5
     Tree Height: 712
   - Class: rviz/Selection
@@ -160,7 +161,7 @@ Visualization Manager:
       Marker Topic: /car_marker
       Name: Marker
       Namespaces:
-        {}
+        car: true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -173,6 +174,14 @@ Visualization Manager:
       Radius: 0.20000000298023224
       Topic: /clicked_point
       Unreliable: false
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /turn_angle_marker
+      Name: Marker
+      Namespaces:
+        {}
+      Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
