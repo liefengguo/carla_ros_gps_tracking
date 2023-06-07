@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
     test_point.pose.orientation.w = 1.0;
     test_point.id = 0;
     test_point.type = visualization_msgs::Marker::LINE_STRIP;
-    test_point.scale.x = 0.3;
+    test_point.scale.x = 0.2;
     test_point.color.a = 1.0;
     test_point.color.g = 0.5;
     test_point.color.b = 0.5;

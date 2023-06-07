@@ -23,9 +23,9 @@
 
 
 
-#define PREVIEW_DIS 2 //预瞄距离
+#define PREVIEW_DIS 1 //预瞄距离
 
-#define Ld 1.5  //轴距
+#define Ld 1.1  //轴距
 
 #define car_vel 0.3
 
@@ -35,6 +35,11 @@ ros::Publisher purepersuit_;
 ros::Publisher path_pub_;
 nav_msgs::Path path;
 ros::Publisher marker_pub;
+ros::Publisher marker_car_pub;
+ros::Publisher marker_pub_street;
+visualization_msgs::Marker marker;
+visualization_msgs::Marker marker_car;
+visualization_msgs::Marker marker_streer;
 
 double carVelocity = 0;
 double preview_dis = 0;
@@ -143,21 +148,25 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   float alpha =
       atan2(r_y_[index] - currentPositionY, r_x_[index] - currentPositionX) -
       currentPositionYaw;
-  alpha = (alpha > M_PI) ? (alpha - 2 * M_PI) : (alpha < -M_PI) ? (alpha + 2 * M_PI) : alpha;
+  // alpha = (alpha > M_PI) ? (alpha - 2 * M_PI) : (alpha < -M_PI) ? (alpha + 2 * M_PI) : alpha;
 
   // 当前点和目标点的距离Id
   float dl = sqrt(pow(r_y_[index] - currentPositionY, 2) +
                   pow(r_x_[index] - currentPositionX, 2));
   
   // 发布小车运动指令及运动轨迹
-  if (dl > 0.5) {
+  if (dl > 0.15) {
     float theta = atan(2 * Ld * sin(alpha) / dl);
-    // delta = max(min(delta_max, delta), -delta_max);
-    float theta_send = theta * 0.5 / 38.6;
-    cout<<"alpha: "<<theta<<" dis: "<<dl<<"index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
+    double degree = theta * 180 / M_PI;
+    degree = max(min(38.6, degree), -38.6);
+    double theta_send = degree * 0.5 / 38.6;
+
+    cout<<"alpha: "<<alpha<<" theta: "<<theta<<"degree"<<degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
+    cout<<"curr_yaw"<<currentPositionYaw <<" atan2:" <<atan2(r_y_[index] - currentPositionY, r_x_[index] - currentPositionX)<<endl;
+
     geometry_msgs::Twist vel_msg;
     vel_msg.linear.x = 0.3;
-    vel_msg.angular.z = theta;
+    vel_msg.angular.z = theta_send;
     purepersuit_.publish(vel_msg);
     // 发布小车运动轨迹
     geometry_msgs::PoseStamped this_pose_stamped;
@@ -175,31 +184,50 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
     this_pose_stamped.header.frame_id = "map";
     path.poses.push_back(this_pose_stamped);
 
-    visualization_msgs::Marker marker;
     marker.header.frame_id = "map";
     marker.header.stamp = ros::Time::now();
-    marker.ns = "coordinates";
-    marker.id = 0;
-    marker.type = visualization_msgs::Marker::SPHERE;
-    marker.action = visualization_msgs::Marker::ADD;
+
     marker.pose.position.x = r_x_[index];
     marker.pose.position.y = r_y_[index];
-    marker.pose.position.z = 0.0;
-    marker.pose.orientation.x = 0.0;
-    marker.pose.orientation.y = 0.0;
-    marker.pose.orientation.z = 0.0;
-    marker.pose.orientation.w = 1.0;
-    marker.scale.x = 1.0;
-    marker.scale.y = 1.0;
-    marker.scale.z = 1.0;
-    marker.color.a = 1.0;
-    marker.color.r = 0.4;
-    marker.color.g = 0.7;
-    marker.color.b = 1.0;
+
     // std::ostringstream oss;
     // oss << "x: " << r_x_[index] << ", y: " << r_y_[index] << ", z: " << 0;
     // marker.text = oss.str();
   marker_pub.publish(marker);
+
+  // 创建一个Marker消息，用于显示车辆
+    // geometry_msgs::PoseStamped pose;
+    // pose.pose.position.x = 0.0;  // 设置车辆位置的X坐标
+    // pose.pose.position.y = 0.0;  // 设置车辆位置的Y坐标
+    // pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.0);  // 设置航向角，初始为0
+    marker_car.header.stamp = ros::Time::now();
+
+    // marker_car.pose.position.x = currentQuaternionX;
+    // marker_car.pose.position.y = currentQuaternionY;
+    cout<<"车："<<currentPositionX<<"  " << currentPositionY<< endl;
+    // marker_car.pose.position.z = 0;
+    marker_car.pose = this_pose_stamped.pose;
+    // marker_car
+    marker_car.pose.orientation = goal_quat;
+
+    marker_car_pub.publish(marker_car);
+
+    marker_streer.points.clear();
+      // 添加起点和末端点
+    // geometry_msgs::Point start_point;
+    // start_point.x = this_pose_stamped.pose.position;
+    // start_point.y = initial_y;
+    // start_point.z = 0.0;
+    marker_streer.points.push_back(this_pose_stamped.pose.position);
+
+    geometry_msgs::Point end_point;
+    end_point.x = r_x_[index];
+    end_point.y = r_y_[index];    
+    end_point.z = 0.0;
+    marker_streer.points.push_back(end_point);
+
+    // 发布Marker消息
+    marker_pub_street.publish(marker_streer);
 
   } else {
     cout<<"NO: "<<dl<<endl;
@@ -238,9 +266,51 @@ int main(int argc, char **argv) {
   //创建Publisher，发送经过pure_pursuit计算后的转角及速度
   purepersuit_ = n.advertise<geometry_msgs::Twist>("/cmd_vel", 20);
   marker_pub = n.advertise<visualization_msgs::Marker>("coordinate_marker", 10);
-
+  marker_car_pub= n.advertise<visualization_msgs::Marker>("car_marker", 1);
   path_pub_ = n.advertise<nav_msgs::Path>("rvizpath", 100, true);
+  marker_pub_street = n.advertise<visualization_msgs::Marker>("turn_angle_marker", 1);
+
   // ros::Rate loop_rate(10);
+    marker.ns = "coordinates";
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::SPHERE;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.z = 0.0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 0.5;
+    marker.scale.y = 0.5;
+    marker.scale.z = 0.5;
+    marker.color.a = 1.0;
+    marker.color.r = 0.4;
+    marker.color.g = 0.7;
+    marker.color.b = 1.0;
+
+    marker_car.header.frame_id = "map";
+    marker_car.ns = "car";
+    marker_car.id = 1;
+    marker_car.action = visualization_msgs::Marker::ADD;
+    marker_car.type = visualization_msgs::Marker::CUBE;
+    marker_car.scale.x = 0.5;  // 车辆模型的缩放因子
+    marker_car.scale.y = 0.2;
+    marker_car.scale.z = 0.1;
+    marker_car.color.a = 1.0;  // 不透明度
+    marker_car.color.r = 1.0;  // 颜色为红色
+    marker_car.color.g = 0.3;
+    marker_car.color.b = 0.2;
+
+    marker_streer.header.frame_id = "map";
+    marker_streer.header.stamp = ros::Time::now();
+    marker_streer.ns = "steering";
+    marker_streer.action = visualization_msgs::Marker::ADD;
+    marker_streer.type = visualization_msgs::Marker::LINE_STRIP;
+    marker_streer.scale.x = 0.1;  // 线的宽度
+    marker_streer.color.a = 1.0;  // 不透明度
+    marker_streer.color.r = 1.0;  // 颜色为红色
+    marker_streer.color.g = 0.0;
+    marker_streer.color.b = 0.0;
 
   path.header.frame_id = "map";
   // 设置时间戳
