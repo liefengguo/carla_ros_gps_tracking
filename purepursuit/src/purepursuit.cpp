@@ -27,7 +27,7 @@
 
 #define Ld 1.1  //轴距
 
-#define car_vel 0.3
+// #define car_vel 0.3
 
 using namespace std;
 
@@ -41,7 +41,7 @@ visualization_msgs::Marker marker;
 visualization_msgs::Marker marker_car;
 visualization_msgs::Marker marker_streer;
 
-double carVelocity = 0;
+double car_vel = 0.3;
 double preview_dis = 0;
 double k = 0.1;
 
@@ -64,9 +64,7 @@ vector<double> r_y_;
 
 int pointNum = 0;  //保存路径点的个数
 int targetIndex = pointNum - 1;
-/*方案一*/
-// vector<int> bestPoints_ = {pointNum - 1};
-/*方案二*/
+
 vector<float> bestPoints_ = {0.0};
 
 //计算发送给模型车的转角
@@ -86,32 +84,7 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   auto currentPositionYaw = tf::getYaw(currentWaypoint.pose.pose.orientation);
   std::array<float, 3> calRPY = calQuaternionToEuler(currentQuaternionX, currentQuaternionY,currentQuaternionZ, currentQuaternionW);
 
-  /*************************************************************************************************
-  //  方案一：通过累加路径距离，和预瞄距离进行比较以及夹角方向
-  // 寻找匹配目标点
-  for (int i = 0; i < pointNum; i++) {
-    float lad = 0.0;  //累加前视距离
-
-    float next_x = r_x_[i + 1];
-    float next_y = r_y_[i + 1];
-    lad += sqrt(pow(next_x - currentPositionX, 2) +
-                pow(next_y - currentPositionY, 2));
-    // cos(aAngle)判断方向
-    float aAngle =
-        atan2(next_y - currentPositionY, next_x - currentPositionX) -
-        calRPY[2];
-    if (lad > preview_dis && cos(aAngle) >= 0) {
-      targetIndex = i + 1;
-      bestPoints_.push_back(targetIndex);
-      break;
-    }
-  }
-  // 取容器中的最大值
-  int index = *max_element(bestPoints_.begin(), bestPoints_.end());
-  ***************************************************************************************************/
-
-  /**************************************************************************************************/
-  // 方案二:通过计算当前坐标和目标轨迹距离，找到一个最小距离的索引号
+  /***********通过计算当前坐标和目标轨迹距离，找到一个最小距离的索引号***************************************************************************************/
   int index;
   vector<double> bestPoints_;
   for (int i = 0; i < pointNum; i++) {
@@ -156,16 +129,18 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   
   // 发布小车运动指令及运动轨迹
   if (dl > 0.15) {
+    car_vel = 0.3;
     float theta = atan(2 * Ld * sin(alpha) / dl);
     double degree = theta * 180 / M_PI;
     degree = max(min(38.6, degree), -38.6);
     double theta_send = degree * 0.5 / 38.6;
+    car_vel *= std::abs(cos(theta_send));
 
-    cout<<"alpha: "<<alpha<<" theta: "<<theta<<"degree"<<degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
+    cout<<"alpha: "<<alpha<<" theta: "<<theta<<" degree"<<degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
     cout<<"curr_yaw"<<currentPositionYaw <<" atan2:" <<atan2(r_y_[index] - currentPositionY, r_x_[index] - currentPositionX)<<endl;
 
     geometry_msgs::Twist vel_msg;
-    vel_msg.linear.x = 0.3;
+    vel_msg.linear.x = car_vel;
     vel_msg.angular.z = theta_send;
     purepersuit_.publish(vel_msg);
     // 发布小车运动轨迹
@@ -190,22 +165,11 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
     marker.pose.position.x = r_x_[index];
     marker.pose.position.y = r_y_[index];
 
-    // std::ostringstream oss;
-    // oss << "x: " << r_x_[index] << ", y: " << r_y_[index] << ", z: " << 0;
-    // marker.text = oss.str();
-  marker_pub.publish(marker);
+    marker_pub.publish(marker);
 
-  // 创建一个Marker消息，用于显示车辆
-    // geometry_msgs::PoseStamped pose;
-    // pose.pose.position.x = 0.0;  // 设置车辆位置的X坐标
-    // pose.pose.position.y = 0.0;  // 设置车辆位置的Y坐标
-    // pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.0);  // 设置航向角，初始为0
     marker_car.header.stamp = ros::Time::now();
 
-    // marker_car.pose.position.x = currentQuaternionX;
-    // marker_car.pose.position.y = currentQuaternionY;
     cout<<"车："<<currentPositionX<<"  " << currentPositionY<< endl;
-    // marker_car.pose.position.z = 0;
     marker_car.pose = this_pose_stamped.pose;
     // marker_car
     marker_car.pose.orientation = goal_quat;
@@ -213,11 +177,7 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
     marker_car_pub.publish(marker_car);
 
     marker_streer.points.clear();
-      // 添加起点和末端点
-    // geometry_msgs::Point start_point;
-    // start_point.x = this_pose_stamped.pose.position;
-    // start_point.y = initial_y;
-    // start_point.z = 0.0;
+
     marker_streer.points.push_back(this_pose_stamped.pose.position);
 
     geometry_msgs::Point end_point;
@@ -239,18 +199,10 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   path_pub_.publish(path);
 }
 
-// void velocityCall(const carla_msgs::CarlaEgoVehicleStatus& carWaypoint) {
-//   // carVelocity = carWaypoint.linear.x;
-//   carVelocity = carWaypoint.velocity;
-
-//   preview_dis = k * carVelocity + PREVIEW_DIS;
-// }
 
 void pointCallback(const nav_msgs::Path &msg) {
-  // geometry_msgs/PoseStamped[] poses
   pointNum = msg.poses.size();
 
-  // auto a = msg.poses[0].pose.position.x;
   for (int i = 0; i < pointNum; i++) {
     r_x_.push_back(msg.poses[i].pose.position.x);
     r_y_.push_back(msg.poses[i].pose.position.y);
