@@ -23,9 +23,9 @@
 
 
 
-#define PREVIEW_DIS 1 //预瞄距离
+#define PREVIEW_DIS 2 //预瞄距离
 
-#define Ld 1.1  //轴距
+#define Ld 1.23  //轴距
 
 // #define car_vel 0.3
 
@@ -37,9 +37,13 @@ nav_msgs::Path path;
 ros::Publisher marker_pub;
 ros::Publisher marker_car_pub;
 ros::Publisher marker_pub_street;
+ros::Publisher marker_pub_fuzhu;
+ros::Publisher marker_pub_ext_car;
 visualization_msgs::Marker marker;
 visualization_msgs::Marker marker_car;
 visualization_msgs::Marker marker_streer;
+visualization_msgs::Marker marker_fuzhu;
+visualization_msgs::Marker marker_ext_car;
 
 double car_vel = 0.3;
 double preview_dis = 0;
@@ -117,11 +121,9 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   }
   index = temp_index;
   /**************************************************************************************************/
-
-  float alpha =
-      atan2(r_y_[index] - currentPositionY, r_x_[index] - currentPositionX) -
-      currentPositionYaw;
-  // alpha = (alpha > M_PI) ? (alpha - 2 * M_PI) : (alpha < -M_PI) ? (alpha + 2 * M_PI) : alpha;
+  float alpha_two_point = atan2(r_y_[index] - currentPositionY, r_x_[index] - currentPositionX); 
+  float alpha = alpha_two_point - currentPositionYaw;
+  alpha = (alpha > M_PI) ? (alpha - 2 * M_PI) : (alpha < -M_PI) ? (alpha + 2 * M_PI) : alpha;
 
   // 当前点和目标点的距离Id
   float dl = sqrt(pow(r_y_[index] - currentPositionY, 2) +
@@ -133,11 +135,12 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
     float theta = atan(2 * Ld * sin(alpha) / dl);
     double degree = theta * 180 / M_PI;
     degree = max(min(38.6, degree), -38.6);
-    double theta_send = degree * 0.5 / 38.6;
+    double theta_send = -degree * 0.5 / 38.6;
     car_vel *= std::abs(cos(theta_send));
+    double curYaw_deg = currentPositionYaw * 180 / M_PI;
 
-    cout<<"alpha: "<<alpha<<" theta: "<<theta<<" degree"<<degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
-    cout<<"curr_yaw"<<currentPositionYaw <<" atan2:" <<atan2(r_y_[index] - currentPositionY, r_x_[index] - currentPositionX)<<endl;
+    cout<<"alpha: "<<alpha* 180 /M_PI<<" theta: "<<theta * 180 /M_PI <<" degree"<<degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
+    cout<<"curr_yaw"<< curYaw_deg <<" alpha_two_point:" << alpha_two_point * 180 / M_PI<<endl;
 
     geometry_msgs::Twist vel_msg;
     vel_msg.linear.x = car_vel;
@@ -164,30 +167,50 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
 
     marker.pose.position.x = r_x_[index];
     marker.pose.position.y = r_y_[index];
-
     marker_pub.publish(marker);
 
     marker_car.header.stamp = ros::Time::now();
-
     cout<<"车："<<currentPositionX<<"  " << currentPositionY<< endl;
     marker_car.pose = this_pose_stamped.pose;
     // marker_car
     marker_car.pose.orientation = goal_quat;
-
     marker_car_pub.publish(marker_car);
 
     marker_streer.points.clear();
-
+    marker_streer.header.stamp = ros::Time::now();
     marker_streer.points.push_back(this_pose_stamped.pose.position);
-
     geometry_msgs::Point end_point;
-    end_point.x = r_x_[index];
-    end_point.y = r_y_[index];    
+    end_point.x = currentPositionX + 10 * sin(theta);
+    end_point.y = currentPositionY + 10 * cos(theta);    
     end_point.z = 0.0;
     marker_streer.points.push_back(end_point);
-
     // 发布Marker消息
     marker_pub_street.publish(marker_streer);
+
+
+    marker_fuzhu.points.clear();
+    marker_fuzhu.header.stamp = ros::Time::now();
+    marker_fuzhu.points.push_back(this_pose_stamped.pose.position);
+    geometry_msgs::Point end_point_fuzhu;
+    end_point_fuzhu.x = r_x_[index]+ 8;
+    end_point_fuzhu.y = currentPositionY;    
+    end_point_fuzhu.z = 0.0;
+    marker_fuzhu.points.push_back(end_point_fuzhu);
+    marker_pub_fuzhu.publish(marker_fuzhu);
+
+    double currentYaw = (currentPositionYaw > M_PI) ? 
+          (currentPositionYaw - 2 * M_PI) : (currentPositionYaw < -M_PI) ? (currentPositionYaw + 2 * M_PI) : currentPositionYaw;
+    double ext_car_y = abs(tan(curYaw_deg)) * abs(r_x_[index] - currentPositionX) + currentPositionY;
+    marker_ext_car.points.clear();
+    marker_ext_car.header.stamp = ros::Time::now();
+    marker_ext_car.points.push_back(this_pose_stamped.pose.position);
+    geometry_msgs::Point end_point_ext_car;
+    int lenth = 8;
+    end_point_ext_car.x = currentPositionX + lenth* sin(currentPositionYaw );
+    end_point_ext_car.y = currentPositionY + lenth* cos(currentPositionYaw );    
+    end_point_ext_car.z = 0.0;
+    marker_ext_car.points.push_back(end_point_ext_car);
+    marker_pub_ext_car.publish(marker_ext_car);
 
   } else {
     cout<<"NO: "<<dl<<endl;
@@ -221,6 +244,8 @@ int main(int argc, char **argv) {
   marker_car_pub= n.advertise<visualization_msgs::Marker>("car_marker", 1);
   path_pub_ = n.advertise<nav_msgs::Path>("rvizpath", 100, true);
   marker_pub_street = n.advertise<visualization_msgs::Marker>("turn_angle_marker", 1);
+  marker_pub_fuzhu = n.advertise<visualization_msgs::Marker>("fuzhu_marker", 1);
+  marker_pub_ext_car = n.advertise<visualization_msgs::Marker>("ext_car_marker", 1);
 
   // ros::Rate loop_rate(10);
     marker.ns = "coordinates";
@@ -263,6 +288,28 @@ int main(int argc, char **argv) {
     marker_streer.color.r = 1.0;  // 颜色为红色
     marker_streer.color.g = 0.0;
     marker_streer.color.b = 0.0;
+
+    marker_fuzhu.header.frame_id = "map";
+    marker_fuzhu.header.stamp = ros::Time::now();
+    marker_fuzhu.ns = "fuzhu";
+    marker_fuzhu.action = visualization_msgs::Marker::ADD;
+    marker_fuzhu.type = visualization_msgs::Marker::LINE_STRIP;
+    marker_fuzhu.scale.x = 0.1;  // 线的宽度
+    marker_fuzhu.color.a = 1.0;  // 不透明度
+    marker_fuzhu.color.r = 1.0;  // 颜色为红色
+    marker_fuzhu.color.g = 0.0;
+    marker_fuzhu.color.b = 0.0;
+
+    marker_ext_car.header.frame_id = "map";
+    marker_ext_car.header.stamp = ros::Time::now();
+    marker_ext_car.ns = "ext_car";
+    marker_ext_car.action = visualization_msgs::Marker::ADD;
+    marker_ext_car.type = visualization_msgs::Marker::LINE_STRIP;
+    marker_ext_car.scale.x = 0.1;  // 线的宽度
+    marker_ext_car.color.a = 1.0;  // 不透明度
+    marker_ext_car.color.r = 0.0;  // 颜色为红色
+    marker_ext_car.color.g = 1.0;
+    marker_ext_car.color.b = 0.0;
 
   path.header.frame_id = "map";
   // 设置时间戳
