@@ -155,7 +155,7 @@ Visualization Manager:
       Marker Topic: /coordinate_marker
       Name: Marker
       Namespaces:
-        {}
+        coordinates: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -163,7 +163,7 @@ Visualization Manager:
       Marker Topic: /car_marker
       Name: Marker
       Namespaces:
-        {}
+        car: true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -182,7 +182,7 @@ Visualization Manager:
       Marker Topic: /turn_angle_marker
       Name: Marker
       Namespaces:
-        {}
+        steering: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -190,7 +190,7 @@ Visualization Manager:
       Marker Topic: /fuzhu_marker
       Name: Marker
       Namespaces:
-        {}
+        fuzhu: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -198,7 +198,7 @@ Visualization Manager:
       Marker Topic: /ext_car_marker
       Name: Marker
       Namespaces:
-        {}
+        ext_car: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -229,7 +229,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 23.705345153808594
+      Distance: 46.66356658935547
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -237,17 +237,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 187.98013305664062
-        Y: 65.59479522705078
-        Z: 0.9179793000221252
+        X: -2.5862698554992676
+        Y: -26.93797492980957
+        Z: -18.46940803527832
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4752041697502136
+      Pitch: 0.8047968149185181
       Target Frame: <Fixed Frame>
-      Yaw: 4.378587245941162
+      Yaw: 1.5454021692276
     Saved: ~
 Window Geometry:
   Displays:

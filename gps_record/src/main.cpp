@@ -16,7 +16,7 @@
 using namespace std;
 FILE *fp;
 string file_path_ = "/home/chen/ros_work/lidar/src/control_publisher/";
-string file_name_ = "gps_points.txt";
+string file_name_ = "GPS_ENU.txt";
 
 
 void callbackPosition(const nav_msgs::Odometry& msgs)
@@ -27,7 +27,7 @@ void callbackPosition(const nav_msgs::Odometry& msgs)
     double yaw = tf::getYaw(msgs.pose.pose.orientation);
     double x ,y ,z;
     // GaussProjCal(position_x,position_y,&x,&y);
-    ecefToEnu(position_x,position_y,position_z,&x,&y,&z);
+    // ecefToEnu(position_x,position_y,position_z,&x,&y,&z);
     
     
 
@@ -37,7 +37,8 @@ void callbackPosition(const nav_msgs::Odometry& msgs)
     }
     if(fp != NULL)
     {
-        fprintf(fp,"%f %f %f %f \n",x,y,z,yaw);
+        fprintf(fp,"%f %f %f %f \n",position_x,position_y,position_z,yaw);
+        // fprintf(fp,"%f %f %f %f \n",x,y,z,yaw);
         fflush(fp);
         
     }
@@ -55,10 +56,12 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "record");
     ros::NodeHandle nh;
     nh.param<std::string>("record/file_path", file_path_, "/home/user/position.txt");
+    nh.param<std::string>("record/file_name", file_name_, "GPS_ENU.txt");
+
 
     
 
-    ros::Subscriber position_sub = nh.subscribe("/fixposition/odometry", 1, callbackPosition);
+    ros::Subscriber position_sub = nh.subscribe("/fixposition/odometry_enu", 1, callbackPosition);
     fp = fopen((file_path_+file_name_).c_str(),"w");
     ros::Rate loop_rate(1);
     

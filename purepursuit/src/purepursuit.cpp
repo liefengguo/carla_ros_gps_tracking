@@ -75,17 +75,19 @@ vector<float> bestPoints_ = {0.0};
 void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   double x ,y,z;
   // GaussProjCal(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,&x,&y);
-  ecefToEnu(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,currentWaypoint.pose.pose.position.z,&x,&y,&z);
-  auto currentPositionX = x;
-  auto currentPositionY = y;
-  auto currentPositionZ = z;
+  // ecefToEnu(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,currentWaypoint.pose.pose.position.z,&x,&y,&z);
+  // auto currentPositionX = x;
+  // auto currentPositionY = y;
+  // auto currentPositionZ = z;
   // cout<<" x: "<<x<<"y : "<<y<<endl;
-
+  auto currentPositionX = currentWaypoint.pose.pose.position.x;
+  auto currentPositionY = currentWaypoint.pose.pose.position.y;
+  auto currentPositionZ = currentWaypoint.pose.pose.position.z;
   auto currentQuaternionX = currentWaypoint.pose.pose.orientation.x;
   auto currentQuaternionY = currentWaypoint.pose.pose.orientation.y;
   auto currentQuaternionZ = currentWaypoint.pose.pose.orientation.z;
   auto currentQuaternionW = currentWaypoint.pose.pose.orientation.w;
-  auto currentPositionYaw = tf::getYaw(currentWaypoint.pose.pose.orientation);
+  auto currentPositionYaw = tf::getYaw(currentWaypoint.pose.pose.orientation) ;
   std::array<float, 3> calRPY = calQuaternionToEuler(currentQuaternionX, currentQuaternionY,currentQuaternionZ, currentQuaternionW);
 
   /***********通过计算当前坐标和目标轨迹距离，找到一个最小距离的索引号***************************************************************************************/
@@ -139,7 +141,7 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
     car_vel *= std::abs(cos(theta_send));
     double curYaw_deg = currentPositionYaw * 180 / M_PI;
 
-    cout<<"alpha: "<<alpha* 180 /M_PI<<" theta: "<<theta * 180 /M_PI <<" degree"<<degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
+    cout<<"alpha: "<<alpha* 180 /M_PI<<" degree"<<degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
     cout<<"curr_yaw"<< curYaw_deg <<" alpha_two_point:" << alpha_two_point * 180 / M_PI<<endl;
 
     geometry_msgs::Twist vel_msg;
@@ -285,9 +287,9 @@ int main(int argc, char **argv) {
     marker_streer.type = visualization_msgs::Marker::LINE_STRIP;
     marker_streer.scale.x = 0.1;  // 线的宽度
     marker_streer.color.a = 1.0;  // 不透明度
-    marker_streer.color.r = 1.0;  // 颜色为红色
+    marker_streer.color.r = 1.0;  // 颜色为紫色
     marker_streer.color.g = 0.0;
-    marker_streer.color.b = 0.0;
+    marker_streer.color.b = 1.0;
 
     marker_fuzhu.header.frame_id = "map";
     marker_fuzhu.header.stamp = ros::Time::now();
@@ -307,7 +309,7 @@ int main(int argc, char **argv) {
     marker_ext_car.type = visualization_msgs::Marker::LINE_STRIP;
     marker_ext_car.scale.x = 0.1;  // 线的宽度
     marker_ext_car.color.a = 1.0;  // 不透明度
-    marker_ext_car.color.r = 0.0;  // 颜色为红色
+    marker_ext_car.color.r = 0.0;  // 颜色为绿色
     marker_ext_car.color.g = 1.0;
     marker_ext_car.color.b = 0.0;
 
@@ -321,7 +323,7 @@ int main(int argc, char **argv) {
 
   ros::Subscriber splinePath = n.subscribe("/splinepoints", 20, pointCallback);
   // ros::Subscriber carVel = n.subscribe("/fixposition/speed", 20, velocityCall);
-  ros::Subscriber carPose = n.subscribe("/fixposition/odometry", 20, poseCallback);
+  ros::Subscriber carPose = n.subscribe("/fixposition/odometry_enu", 20, poseCallback);
   ros::spin();
   return 0;
 }

@@ -1,0 +1,23 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/opt/ros/noetic/include/**",
+        "/home/glf/Projects/gps_track_ws/src/carla_ros_gps_tracking/gps_record/include/**",
+        "/home/glf/Projects/gps_track_ws/src/carla_ros_gps_tracking/purepursuit/include/**",
+        "/home/glf/Projects/gps_track_ws/src/rviz_visual_tools/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
