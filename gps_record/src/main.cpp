@@ -35,7 +35,7 @@ void callbackPosition(const nav_msgs::Odometry& msgs)
     }
     if(fp != NULL)
     {
-        fprintf(fp,"%f %f %f %f \n",position_x,position_y,position_z,yaw);
+        fprintf(fp,"%f %f %f %f \n",x,y,z,yaw);
         // fprintf(fp,"%f %f %f %f \n",x,y,z,yaw);
         fflush(fp);
     }

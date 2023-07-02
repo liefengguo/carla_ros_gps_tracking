@@ -6,8 +6,8 @@
 #include <iostream>
 
 #include <math.h>
-#define AIM_LAT 31.766069438
-#define AIM_LNG 117.150204267
+#define AIM_LAT 31.781120032
+#define AIM_LNG 117.357352533
 #define AIM_HEIGHT  10
 
 //double nmeaConvert2Lat(string lat)

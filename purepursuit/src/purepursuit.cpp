@@ -10,7 +10,9 @@
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Path.h>
 #include <tf/tf.h>
-#include <tf/transform_broadcaster.h>
+// #include <tf/transform_broadcaster.h>
+#include<tf2_ros/transform_listener.h>
+#include<tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include "geometry_msgs/PoseStamped.h"
 
 #include "../include/loc_ang.h"
@@ -49,6 +51,7 @@ double car_vel = 0.3;
 double preview_dis = 0;
 double k = 0.1;
 
+
 // 计算四元数转换到欧拉角
 std::array<float, 3> calQuaternionToEuler(const float x, const float y,
                                           const float z, const float w) {
@@ -75,19 +78,33 @@ vector<float> bestPoints_ = {0.0};
 void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   double x ,y,z;
   // GaussProjCal(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,&x,&y);
-  // ecefToEnu(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,currentWaypoint.pose.pose.position.z,&x,&y,&z);
+  ecefToEnu(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,currentWaypoint.pose.pose.position.z,&x,&y,&z);
   // auto currentPositionX = x;
   // auto currentPositionY = y;
   // auto currentPositionZ = z;
   // cout<<" x: "<<x<<"y : "<<y<<endl;
-  auto currentPositionX = currentWaypoint.pose.pose.position.x;
-  auto currentPositionY = currentWaypoint.pose.pose.position.y;
-  auto currentPositionZ = currentWaypoint.pose.pose.position.z;
-  auto currentQuaternionX = currentWaypoint.pose.pose.orientation.x;
-  auto currentQuaternionY = currentWaypoint.pose.pose.orientation.y;
-  auto currentQuaternionZ = currentWaypoint.pose.pose.orientation.z;
-  auto currentQuaternionW = currentWaypoint.pose.pose.orientation.w;
-  auto currentPositionYaw = tf::getYaw(currentWaypoint.pose.pose.orientation) ;
+
+tf2_ros::Buffer tfBuffer;
+tf2_ros::TransformListener tfListener(tfBuffer);
+
+geometry_msgs::TransformStamped transformStamped;
+  transformStamped = tfBuffer.lookupTransform("FP_ENU", "ECEF", ros::Time(0),ros::Duration(1));
+  geometry_msgs::QuaternionStamped ecefOrientation;
+  ecefOrientation.quaternion.w = currentWaypoint.pose.pose.orientation.w;
+  ecefOrientation.quaternion.x = currentWaypoint.pose.pose.orientation.x;
+  ecefOrientation.quaternion.y = currentWaypoint.pose.pose.orientation.y;
+  ecefOrientation.quaternion.z = currentWaypoint.pose.pose.orientation.z;
+  geometry_msgs::QuaternionStamped enuOrientation; 
+  tf2::doTransform(ecefOrientation, enuOrientation, transformStamped);
+
+  auto currentPositionX = x;
+  auto currentPositionY = y;
+  auto currentPositionZ = z;
+  auto currentQuaternionX = enuOrientation.quaternion.x;
+  auto currentQuaternionY = enuOrientation.quaternion.y;
+  auto currentQuaternionZ = enuOrientation.quaternion.z;
+  auto currentQuaternionW = enuOrientation.quaternion.w;
+  auto currentPositionYaw = tf::getYaw(enuOrientation.quaternion) ;
   std::array<float, 3> calRPY = calQuaternionToEuler(currentQuaternionX, currentQuaternionY,currentQuaternionZ, currentQuaternionW);
 
   /***********通过计算当前坐标和目标轨迹距离，找到一个最小距离的索引号***************************************************************************************/
@@ -141,11 +158,11 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
     car_vel *= std::abs(cos(theta_send));
     double curYaw_deg = currentPositionYaw * 180 / M_PI;
 
-    cout<<"alpha: "<<alpha* 180 /M_PI<<" degree"<<degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
+    cout<<"alpha: "<<alpha* 180 /M_PI<<" degree"<<-degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
     cout<<"curr_yaw"<< curYaw_deg <<" alpha_two_point:" << alpha_two_point * 180 / M_PI<<endl;
 
     geometry_msgs::Twist vel_msg;
-    vel_msg.linear.x = car_vel;
+    vel_msg.linear.x = 0.3;
     vel_msg.angular.z = theta_send;
     purepersuit_.publish(vel_msg);
     // 发布小车运动轨迹
@@ -323,7 +340,7 @@ int main(int argc, char **argv) {
 
   ros::Subscriber splinePath = n.subscribe("/splinepoints", 20, pointCallback);
   // ros::Subscriber carVel = n.subscribe("/fixposition/speed", 20, velocityCall);
-  ros::Subscriber carPose = n.subscribe("/fixposition/odometry_enu", 20, poseCallback);
+  ros::Subscriber carPose = n.subscribe("/fixposition/odometry", 20, poseCallback);
   ros::spin();
   return 0;
 }
