@@ -5,7 +5,7 @@
 
   <node pkg="gps_record" type="gps_record" name="gps_record" output="screen">
     <param name="file_path" value="$(find gps_record)/output/" />
-    <param name="file_name" value="GPS_ENU.txt" />
+    <param name="file_name" value="path.txt" />
     <!-- <param name="topic_name" value="/fixposition/navsatfix" /> -->
     <param name="topic_name" value="/djiros/rtk_position" />
     <param name="save_interval" value="1.0" />

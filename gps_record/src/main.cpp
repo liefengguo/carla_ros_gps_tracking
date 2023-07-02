@@ -27,10 +27,8 @@ void callbackPosition(const nav_msgs::Odometry& msgs)
     double yaw = tf::getYaw(msgs.pose.pose.orientation);
     double x ,y ,z;
     // GaussProjCal(position_x,position_y,&x,&y);
-    // ecefToEnu(position_x,position_y,position_z,&x,&y,&z);
+    ecefToEnu(position_x,position_y,position_z,&x,&y,&z);
     
-    
-
     if(fp == NULL)
     {
 	ROS_INFO("open record data file %s failed !!!",(file_path_+file_name_).c_str());
@@ -40,10 +38,7 @@ void callbackPosition(const nav_msgs::Odometry& msgs)
         fprintf(fp,"%f %f %f %f \n",position_x,position_y,position_z,yaw);
         // fprintf(fp,"%f %f %f %f \n",x,y,z,yaw);
         fflush(fp);
-        
     }
-
-
     ROS_INFO("Position x %f", position_x);
     ROS_INFO("Position y %f", position_y);
     ROS_INFO("Position z %f", position_z);
@@ -56,20 +51,14 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "record");
     ros::NodeHandle nh;
     nh.param<std::string>("record/file_path", file_path_, "/home/user/position.txt");
-    nh.param<std::string>("record/file_name", file_name_, "GPS_ENU.txt");
+    nh.param<std::string>("record/file_name", file_name_, "path.txt");
 
-
-    
-
-    ros::Subscriber position_sub = nh.subscribe("/fixposition/odometry_enu", 1, callbackPosition);
+    ros::Subscriber position_sub = nh.subscribe("/fixposition/odometry", 1, callbackPosition);
     fp = fopen((file_path_+file_name_).c_str(),"w");
     ros::Rate loop_rate(1);
-    
 
-   
     while(ros::ok())
     {
-
         ros::spinOnce();
         loop_rate.sleep();
     }
