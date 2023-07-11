@@ -25,7 +25,7 @@
 
 
 
-#define PREVIEW_DIS 2 //预瞄距离
+#define PREVIEW_DIS 3 //预瞄距离
 
 #define Ld 1.23  //轴距
 
@@ -46,7 +46,8 @@ visualization_msgs::Marker marker_car;
 visualization_msgs::Marker marker_streer;
 visualization_msgs::Marker marker_fuzhu;
 visualization_msgs::Marker marker_ext_car;
-
+std::ofstream logfile;
+bool log_flag; 
 double car_vel = 0.3;
 double preview_dis = 0;
 double k = 0.1;
@@ -79,15 +80,11 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   double x ,y,z;
   // GaussProjCal(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,&x,&y);
   ecefToEnu(currentWaypoint.pose.pose.position.x,currentWaypoint.pose.pose.position.y,currentWaypoint.pose.pose.position.z,&x,&y,&z);
-  // auto currentPositionX = x;
-  // auto currentPositionY = y;
-  // auto currentPositionZ = z;
-  // cout<<" x: "<<x<<"y : "<<y<<endl;
+  // cout<<"时间："<< currentWaypoint.header.stamp<<endl;
+  tf2_ros::Buffer tfBuffer;
+  tf2_ros::TransformListener tfListener(tfBuffer);
 
-tf2_ros::Buffer tfBuffer;
-tf2_ros::TransformListener tfListener(tfBuffer);
-
-geometry_msgs::TransformStamped transformStamped;
+  geometry_msgs::TransformStamped transformStamped;
   transformStamped = tfBuffer.lookupTransform("FP_ENU", "ECEF", ros::Time(0),ros::Duration(1));
   geometry_msgs::QuaternionStamped ecefOrientation;
   ecefOrientation.quaternion.w = currentWaypoint.pose.pose.orientation.w;
@@ -160,7 +157,14 @@ geometry_msgs::TransformStamped transformStamped;
 
     cout<<"alpha: "<<alpha* 180 /M_PI<<" degree"<<-degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
     cout<<"curr_yaw"<< curYaw_deg <<" alpha_two_point:" << alpha_two_point * 180 / M_PI<<endl;
-
+    if(log_flag){
+        if (!logfile.is_open()) {
+            // 处理无法打开日志文件的情况
+            std::cout<<"no open!!!!"<<std::endl;
+            // return;
+    }
+        logfile << theta_send <<  std::endl;
+    }
     geometry_msgs::Twist vel_msg;
     vel_msg.linear.x = 0.3;
     vel_msg.angular.z = theta_send;
@@ -265,7 +269,16 @@ int main(int argc, char **argv) {
   marker_pub_street = n.advertise<visualization_msgs::Marker>("turn_angle_marker", 1);
   marker_pub_fuzhu = n.advertise<visualization_msgs::Marker>("fuzhu_marker", 1);
   marker_pub_ext_car = n.advertise<visualization_msgs::Marker>("ext_car_marker", 1);
+  n.param<bool>("purepursuit_/log_flag", log_flag, 1);
 
+  if (log_flag){
+    std::string path = "/home/glf/log/";
+    std::stringstream  filename;
+    filename <<path<< "cmd_z"  << ".txt";
+    std::cout<<"file path :"<<filename.str()<<std::endl;
+    // 打开日志文件
+    logfile.open(filename.str(), std::ios::app);
+  }
   // ros::Rate loop_rate(10);
     marker.ns = "coordinates";
     marker.id = 0;
@@ -342,5 +355,11 @@ int main(int argc, char **argv) {
   // ros::Subscriber carVel = n.subscribe("/fixposition/speed", 20, velocityCall);
   ros::Subscriber carPose = n.subscribe("/fixposition/odometry", 20, poseCallback);
   ros::spin();
+  if(log_flag){
+    if (logfile.is_open()) {
+        std::cout<<"close!!!!"<<std::endl;
+        logfile.close();
+    }
+  }
   return 0;
 }
