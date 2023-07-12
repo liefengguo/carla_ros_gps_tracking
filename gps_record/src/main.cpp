@@ -6,8 +6,6 @@
 #include <sstream>
 #include <memory>
 #include <std_msgs/String.h>
-#include <carla_msgs/CarlaEgoVehicleControl.h>
-#include <carla_msgs/CarlaEgoVehicleStatus.h>
 #include <tf2/convert.h>
 #include <tf/transform_broadcaster.h>
 #include <cmath>
