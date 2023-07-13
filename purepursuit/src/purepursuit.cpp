@@ -121,7 +121,6 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   auto smallest = min_element(bestPoints_.begin(), bestPoints_.end());
   // 找到最小横向距离的索引位置
   index = distance(bestPoints_.begin(), smallest);
-
   int temp_index;
   for (int i = index; i < pointNum; i++) {
     //遍历路径点和预瞄点的距离，从最小横向位置的索引开始
