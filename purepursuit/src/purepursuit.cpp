@@ -6,7 +6,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Path.h>
 #include <tf/tf.h>
@@ -14,11 +13,9 @@
 #include<tf2_ros/transform_listener.h>
 #include<tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include "geometry_msgs/PoseStamped.h"
-
 #include "../include/loc_ang.h"
 #include "../include/gnss_coordinate_convert.h"
 #include "visualization_msgs/Marker.h"
-
 #include <tf2/convert.h>
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Header.h>
@@ -85,163 +82,167 @@ void poseCallback(const nav_msgs::Odometry &currentWaypoint) {
   tf2_ros::TransformListener tfListener(tfBuffer);
 
   geometry_msgs::TransformStamped transformStamped;
-  transformStamped = tfBuffer.lookupTransform("FP_ENU", "ECEF", ros::Time(0),ros::Duration(1));
-  geometry_msgs::QuaternionStamped ecefOrientation;
-  ecefOrientation.quaternion.w = currentWaypoint.pose.pose.orientation.w;
-  ecefOrientation.quaternion.x = currentWaypoint.pose.pose.orientation.x;
-  ecefOrientation.quaternion.y = currentWaypoint.pose.pose.orientation.y;
-  ecefOrientation.quaternion.z = currentWaypoint.pose.pose.orientation.z;
-  geometry_msgs::QuaternionStamped enuOrientation; 
-  tf2::doTransform(ecefOrientation, enuOrientation, transformStamped);
+  try{
+    transformStamped = tfBuffer.lookupTransform("FP_ENU", "ECEF", ros::Time(0),ros::Duration(1));
+    geometry_msgs::QuaternionStamped ecefOrientation;
+    ecefOrientation.quaternion.w = currentWaypoint.pose.pose.orientation.w;
+    ecefOrientation.quaternion.x = currentWaypoint.pose.pose.orientation.x;
+    ecefOrientation.quaternion.y = currentWaypoint.pose.pose.orientation.y;
+    ecefOrientation.quaternion.z = currentWaypoint.pose.pose.orientation.z;
+    geometry_msgs::QuaternionStamped enuOrientation; 
+    tf2::doTransform(ecefOrientation, enuOrientation, transformStamped);
 
-  auto currentPositionX = x;
-  auto currentPositionY = y;
-  auto currentPositionZ = z;
-  auto currentQuaternionX = enuOrientation.quaternion.x;
-  auto currentQuaternionY = enuOrientation.quaternion.y;
-  auto currentQuaternionZ = enuOrientation.quaternion.z;
-  auto currentQuaternionW = enuOrientation.quaternion.w;
-  auto currentPositionYaw = tf::getYaw(enuOrientation.quaternion) ;
-  std::array<float, 3> calRPY = calQuaternionToEuler(currentQuaternionX, currentQuaternionY,currentQuaternionZ, currentQuaternionW);
+    auto currentPositionX = x;
+    auto currentPositionY = y;
+    auto currentPositionZ = z;
+    auto currentQuaternionX = enuOrientation.quaternion.x;
+    auto currentQuaternionY = enuOrientation.quaternion.y;
+    auto currentQuaternionZ = enuOrientation.quaternion.z;
+    auto currentQuaternionW = enuOrientation.quaternion.w;
+    auto currentPositionYaw = tf::getYaw(enuOrientation.quaternion) ;
+    std::array<float, 3> calRPY = calQuaternionToEuler(currentQuaternionX, currentQuaternionY,currentQuaternionZ, currentQuaternionW);
 
-  /***********通过计算当前坐标和目标轨迹距离，找到一个最小距离的索引号***************************************************************************************/
-  int index;
-  vector<double> bestPoints_;
-  for (int i = 0; i < pointNum; i++) {
-    // float lad = 0.0;
-    double path_x = r_x_[i];
-    double path_y = r_y_[i];
-    // 遍历所有路径点和当前位置的距离，保存到数组中
-    double lad = sqrt(pow(path_x - currentPositionX, 2) +
-                     pow(path_y - currentPositionY, 2));
+    /***********通过计算当前坐标和目标轨迹距离，找到一个最小距离的索引号***************************************************************************************/
+    int index;
+    vector<double> bestPoints_;
+    for (int i = 0; i < pointNum; i++) {
+      // float lad = 0.0;
+      double path_x = r_x_[i];
+      double path_y = r_y_[i];
+      // 遍历所有路径点和当前位置的距离，保存到数组中
+      double lad = sqrt(pow(path_x - currentPositionX, 2) +
+                      pow(path_y - currentPositionY, 2));
+      bestPoints_.push_back(lad);
+    }
+    // 找到数组中最小横向距离
+    auto smallest = min_element(bestPoints_.begin(), bestPoints_.end());
+    // 找到最小横向距离的索引位置
+    index = distance(bestPoints_.begin(), smallest);
+    int temp_index;
+    for (int i = index; i < pointNum; i++) {
+      //遍历路径点和预瞄点的距离，从最小横向位置的索引开始
+      float dis =
+          sqrt(pow(r_y_[index] - r_y_[i], 2) + pow(r_x_[index] - r_x_[i], 2));
+      //判断跟预瞄点的距离
+      preview_dis = k * car_vel + PREVIEW_DIS;
+      if (dis < preview_dis) {
+        temp_index = i;
+      } else {
+        break;
+      }
+    }
+    index = temp_index;
+    /**************************************************************************************************/
+    float alpha_two_point = atan2(r_y_[index] - currentPositionY, r_x_[index] - currentPositionX); 
+    float alpha = alpha_two_point - currentPositionYaw;
+    alpha = (alpha > M_PI) ? (alpha - 2 * M_PI) : (alpha < -M_PI) ? (alpha + 2 * M_PI) : alpha;
 
-    bestPoints_.push_back(lad);
-  }
-  // 找到数组中最小横向距离
-  auto smallest = min_element(bestPoints_.begin(), bestPoints_.end());
-  // 找到最小横向距离的索引位置
-  index = distance(bestPoints_.begin(), smallest);
-  int temp_index;
-  for (int i = index; i < pointNum; i++) {
-    //遍历路径点和预瞄点的距离，从最小横向位置的索引开始
-    float dis =
-        sqrt(pow(r_y_[index] - r_y_[i], 2) + pow(r_x_[index] - r_x_[i], 2));
-    //判断跟预瞄点的距离
-    preview_dis = k * car_vel + PREVIEW_DIS;
-    if (dis < preview_dis) {
-      temp_index = i;
+    // 当前点和目标点的距离Id
+    float dl = sqrt(pow(r_y_[index] - currentPositionY, 2) +
+                    pow(r_x_[index] - currentPositionX, 2));
+    // 发布小车运动指令及运动轨迹
+    if (dl > 0.15) {
+      car_vel = 0.3;
+      float theta = atan(2 * Ld * sin(alpha) / dl);
+      double degree = theta * 180 / M_PI;
+      degree = max(min(38.6, degree), -38.6);
+      double theta_send = -degree * 0.5 / 38.6;
+      car_vel *= std::abs(cos(theta_send));
+      double curYaw_deg = currentPositionYaw * 180 / M_PI;
+
+      cout<<"alpha: "<<alpha* 180 /M_PI<<" degree"<<-degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
+      cout<<"curr_yaw"<< curYaw_deg <<" alpha_two_point:" << alpha_two_point * 180 / M_PI<<endl;
+      if(log_flag){
+          if (!logfile.is_open()) {
+              // 处理无法打开日志文件的情况
+              std::cout<<"no open!!!!"<<std::endl;
+              // return;
+      }
+          logfile << theta_send <<  std::endl;
+      }
+      geometry_msgs::Twist vel_msg;
+      vel_msg.linear.x = 0.3;
+      vel_msg.angular.z = theta_send;
+      purepersuit_.publish(vel_msg);
+      // 发布小车运动轨迹
+      geometry_msgs::PoseStamped this_pose_stamped;
+      this_pose_stamped.pose.position.x = currentPositionX;
+      this_pose_stamped.pose.position.y = currentPositionY;
+
+      geometry_msgs::Quaternion goal_quat = tf::createQuaternionMsgFromYaw(theta);
+      this_pose_stamped.pose.orientation.x = currentQuaternionX;
+      this_pose_stamped.pose.orientation.y = currentQuaternionY;
+      this_pose_stamped.pose.orientation.z = currentQuaternionZ;
+      this_pose_stamped.pose.orientation.w = currentQuaternionW;
+
+      this_pose_stamped.header.stamp = ros::Time::now();
+
+      this_pose_stamped.header.frame_id = "map";
+      path.poses.push_back(this_pose_stamped);
+
+      marker.header.frame_id = "map";
+      marker.header.stamp = ros::Time::now();
+
+      marker.pose.position.x = r_x_[index];
+      marker.pose.position.y = r_y_[index];
+      marker_pub.publish(marker);
+
+      marker_car.header.stamp = ros::Time::now();
+      cout<<"车："<<currentPositionX<<"  " << currentPositionY<< endl;
+      marker_car.pose = this_pose_stamped.pose;
+      // marker_car
+      marker_car.pose.orientation = goal_quat;
+      marker_car_pub.publish(marker_car);
+
+      marker_streer.points.clear();
+      marker_streer.header.stamp = ros::Time::now();
+      marker_streer.points.push_back(this_pose_stamped.pose.position);
+      geometry_msgs::Point end_point;
+      end_point.x = currentPositionX + 10 * sin(theta);
+      end_point.y = currentPositionY + 10 * cos(theta);    
+      end_point.z = 0.0;
+      marker_streer.points.push_back(end_point);
+      // 发布Marker消息
+      marker_pub_street.publish(marker_streer);
+
+
+      marker_fuzhu.points.clear();
+      marker_fuzhu.header.stamp = ros::Time::now();
+      marker_fuzhu.points.push_back(this_pose_stamped.pose.position);
+      geometry_msgs::Point end_point_fuzhu;
+      end_point_fuzhu.x = r_x_[index]+ 8;
+      end_point_fuzhu.y = currentPositionY;    
+      end_point_fuzhu.z = 0.0;
+      marker_fuzhu.points.push_back(end_point_fuzhu);
+      marker_pub_fuzhu.publish(marker_fuzhu);
+
+      double currentYaw = (currentPositionYaw > M_PI) ? 
+            (currentPositionYaw - 2 * M_PI) : (currentPositionYaw < -M_PI) ? (currentPositionYaw + 2 * M_PI) : currentPositionYaw;
+      double ext_car_y = abs(tan(curYaw_deg)) * abs(r_x_[index] - currentPositionX) + currentPositionY;
+      marker_ext_car.points.clear();
+      marker_ext_car.header.stamp = ros::Time::now();
+      marker_ext_car.points.push_back(this_pose_stamped.pose.position);
+      geometry_msgs::Point end_point_ext_car;
+      int lenth = 8;
+      end_point_ext_car.x = currentPositionX + lenth* sin(currentPositionYaw );
+      end_point_ext_car.y = currentPositionY + lenth* cos(currentPositionYaw );    
+      end_point_ext_car.z = 0.0;
+      marker_ext_car.points.push_back(end_point_ext_car);
+      marker_pub_ext_car.publish(marker_ext_car);
+
     } else {
-      break;
+      cout<<"NO: "<<dl<<endl;
+      geometry_msgs::Twist vel_msg;
+      vel_msg.linear.x = 0;
+      vel_msg.angular.z = 0;
+      purepersuit_.publish(vel_msg);
     }
-  }
-  index = temp_index;
-  /**************************************************************************************************/
-  float alpha_two_point = atan2(r_y_[index] - currentPositionY, r_x_[index] - currentPositionX); 
-  float alpha = alpha_two_point - currentPositionYaw;
-  alpha = (alpha > M_PI) ? (alpha - 2 * M_PI) : (alpha < -M_PI) ? (alpha + 2 * M_PI) : alpha;
-
-  // 当前点和目标点的距离Id
-  float dl = sqrt(pow(r_y_[index] - currentPositionY, 2) +
-                  pow(r_x_[index] - currentPositionX, 2));
-  
-  // 发布小车运动指令及运动轨迹
-  if (dl > 0.15) {
-    car_vel = 0.3;
-    float theta = atan(2 * Ld * sin(alpha) / dl);
-    double degree = theta * 180 / M_PI;
-    degree = max(min(38.6, degree), -38.6);
-    double theta_send = -degree * 0.5 / 38.6;
-    car_vel *= std::abs(cos(theta_send));
-    double curYaw_deg = currentPositionYaw * 180 / M_PI;
-
-    cout<<"alpha: "<<alpha* 180 /M_PI<<" degree"<<-degree<<" dis: "<<dl<<"  index:"<<index<<"x: "<<r_x_[index]<<"y: "<<r_y_[index]<<endl;
-    cout<<"curr_yaw"<< curYaw_deg <<" alpha_two_point:" << alpha_two_point * 180 / M_PI<<endl;
-    if(log_flag){
-        if (!logfile.is_open()) {
-            // 处理无法打开日志文件的情况
-            std::cout<<"no open!!!!"<<std::endl;
-            // return;
-    }
-        logfile << theta_send <<  std::endl;
-    }
-    geometry_msgs::Twist vel_msg;
-    vel_msg.linear.x = 0.3;
-    vel_msg.angular.z = theta_send;
-    purepersuit_.publish(vel_msg);
-    // 发布小车运动轨迹
-    geometry_msgs::PoseStamped this_pose_stamped;
-    this_pose_stamped.pose.position.x = currentPositionX;
-    this_pose_stamped.pose.position.y = currentPositionY;
-
-    geometry_msgs::Quaternion goal_quat = tf::createQuaternionMsgFromYaw(theta);
-    this_pose_stamped.pose.orientation.x = currentQuaternionX;
-    this_pose_stamped.pose.orientation.y = currentQuaternionY;
-    this_pose_stamped.pose.orientation.z = currentQuaternionZ;
-    this_pose_stamped.pose.orientation.w = currentQuaternionW;
-
-    this_pose_stamped.header.stamp = ros::Time::now();
-
-    this_pose_stamped.header.frame_id = "map";
-    path.poses.push_back(this_pose_stamped);
-
-    marker.header.frame_id = "map";
-    marker.header.stamp = ros::Time::now();
-
-    marker.pose.position.x = r_x_[index];
-    marker.pose.position.y = r_y_[index];
-    marker_pub.publish(marker);
-
-    marker_car.header.stamp = ros::Time::now();
-    cout<<"车："<<currentPositionX<<"  " << currentPositionY<< endl;
-    marker_car.pose = this_pose_stamped.pose;
-    // marker_car
-    marker_car.pose.orientation = goal_quat;
-    marker_car_pub.publish(marker_car);
-
-    marker_streer.points.clear();
-    marker_streer.header.stamp = ros::Time::now();
-    marker_streer.points.push_back(this_pose_stamped.pose.position);
-    geometry_msgs::Point end_point;
-    end_point.x = currentPositionX + 10 * sin(theta);
-    end_point.y = currentPositionY + 10 * cos(theta);    
-    end_point.z = 0.0;
-    marker_streer.points.push_back(end_point);
-    // 发布Marker消息
-    marker_pub_street.publish(marker_streer);
-
-
-    marker_fuzhu.points.clear();
-    marker_fuzhu.header.stamp = ros::Time::now();
-    marker_fuzhu.points.push_back(this_pose_stamped.pose.position);
-    geometry_msgs::Point end_point_fuzhu;
-    end_point_fuzhu.x = r_x_[index]+ 8;
-    end_point_fuzhu.y = currentPositionY;    
-    end_point_fuzhu.z = 0.0;
-    marker_fuzhu.points.push_back(end_point_fuzhu);
-    marker_pub_fuzhu.publish(marker_fuzhu);
-
-    double currentYaw = (currentPositionYaw > M_PI) ? 
-          (currentPositionYaw - 2 * M_PI) : (currentPositionYaw < -M_PI) ? (currentPositionYaw + 2 * M_PI) : currentPositionYaw;
-    double ext_car_y = abs(tan(curYaw_deg)) * abs(r_x_[index] - currentPositionX) + currentPositionY;
-    marker_ext_car.points.clear();
-    marker_ext_car.header.stamp = ros::Time::now();
-    marker_ext_car.points.push_back(this_pose_stamped.pose.position);
-    geometry_msgs::Point end_point_ext_car;
-    int lenth = 8;
-    end_point_ext_car.x = currentPositionX + lenth* sin(currentPositionYaw );
-    end_point_ext_car.y = currentPositionY + lenth* cos(currentPositionYaw );    
-    end_point_ext_car.z = 0.0;
-    marker_ext_car.points.push_back(end_point_ext_car);
-    marker_pub_ext_car.publish(marker_ext_car);
-
-  } else {
-    cout<<"NO: "<<dl<<endl;
-    geometry_msgs::Twist vel_msg;
-    vel_msg.linear.x = 0;
-    vel_msg.angular.z = 0;
-    purepersuit_.publish(vel_msg);
-  }
   path_pub_.publish(path);
+  }// try
+  catch (tf2::TransformException &ex)
+  {
+    ROS_WARN_STREAM(ex.what());
+  }
 }
 
 
